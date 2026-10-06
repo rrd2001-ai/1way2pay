@@ -1,13 +1,38 @@
 from fastapi import Depends, FastAPI, HTTPException
-from fastapi.responses import RedirectResponse
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from .database import Base, engine, get_db
-from .models import Payment
+from .models import Merchant, Payment
 from .payments import create_payment, mark_payment_success
 from .schemas import PaymentCreate
 
+from .auth import get_current_merchant
+
 Base.metadata.create_all(bind=engine)
+
+def create_test_merchant():
+    db = next(get_db())
+
+    existing = (
+        db.query(Merchant)
+        .filter(Merchant.api_key == "nw_test_123456")
+        .first()
+    )
+
+    if not existing:
+        merchant = Merchant(
+            id="merchant_test_001",
+            name="Test Merchant",
+            api_key="nw_test_123456",
+        )
+
+        db.add(merchant)
+        db.commit()
+
+    db.close()
+
+
+create_test_merchant()
 
 app = FastAPI(
     title="1Way2Pay API",
@@ -29,6 +54,7 @@ def root():
 def create_payment_endpoint(
     payment_data: PaymentCreate,
     db: Session = Depends(get_db),
+    merchant: Merchant = Depends(get_current_merchant),
 ):
     payment = create_payment(
         db=db,
