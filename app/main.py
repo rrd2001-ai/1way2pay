@@ -75,14 +75,14 @@ def create_payment_endpoint(
                 detail="Idempotency key already used with different payment details",
             )
 
-    return {
-        "id": existing_payment.id,
-        "amount": existing_payment.amount,
-        "currency": existing_payment.currency,
-        "order_id": existing_payment.order_id,
-        "status": existing_payment.status,
-        "checkout_url": f"/pay/{existing_payment.id}",
-    }
+        return {
+            "id": existing_payment.id,
+            "amount": existing_payment.amount,
+            "currency": existing_payment.currency,
+            "order_id": existing_payment.order_id,
+            "status": existing_payment.status,
+            "checkout_url": f"/pay/{existing_payment.id}",
+        }
 
     payment = create_payment(
         db=db,
@@ -163,10 +163,14 @@ def checkout(
 def simulate_success(
     payment_id: str,
     db: Session = Depends(get_db),
+    merchant: Merchant = Depends(get_current_merchant),
 ):
     payment = (
         db.query(Payment)
-        .filter(Payment.id == payment_id)
+        .filter(
+            Payment.id == payment_id,
+            Payment.merchant_id == merchant.id,
+        )
         .first()
     )
 
