@@ -1,4 +1,4 @@
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from .database import Base, engine, get_db
@@ -40,7 +40,6 @@ app = FastAPI(
     version="0.1.0",
 )
 
-
 @app.get("/")
 def root():
     return {
@@ -49,20 +48,50 @@ def root():
         "status": "running",
     }
 
-
 @app.post("/v1/payments")
 def create_payment_endpoint(
     payment_data: PaymentCreate,
+    idempotency_key: str = Header(..., alias="Idempotency-Key"),
     db: Session = Depends(get_db),
     merchant: Merchant = Depends(get_current_merchant),
 ):
+    existing_payment = (
+        db.query(Payment)
+        .filter(
+            Payment.merchant_id == merchant.id,
+            Payment.idempotency_key == idempotency_key,
+        )
+        .first()
+    )
+
+    if existing_payment:
+        if (
+            existing_payment.amount != payment_data.amount
+            or existing_payment.currency != payment_data.currency
+            or existing_payment.order_id != payment_data.order_id
+        ):
+            raise HTTPException(
+                status_code=409,
+                detail="Idempotency key already used with different payment details",
+            )
+
+    return {
+        "id": existing_payment.id,
+        "amount": existing_payment.amount,
+        "currency": existing_payment.currency,
+        "order_id": existing_payment.order_id,
+        "status": existing_payment.status,
+        "checkout_url": f"/pay/{existing_payment.id}",
+    }
+
     payment = create_payment(
-    db=db,
-    amount=payment_data.amount,
-    currency=payment_data.currency,
-    order_id=payment_data.order_id,
-    merchant=merchant,
-)
+        db=db,
+        amount=payment_data.amount,
+        currency=payment_data.currency,
+        order_id=payment_data.order_id,
+        merchant=merchant,
+        idempotency_key=idempotency_key,
+    )
 
     return {
         "id": payment.id,
@@ -72,7 +101,6 @@ def create_payment_endpoint(
         "status": payment.status,
         "checkout_url": f"/pay/{payment.id}",
     }
-
 
 @app.get("/v1/payments/{payment_id}")
 def get_payment(

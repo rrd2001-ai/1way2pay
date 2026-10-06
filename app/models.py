@@ -1,13 +1,17 @@
 from datetime import datetime, timezone
-
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
-
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, UniqueConstraint
 from .database import Base
 
 
 class Payment(Base):
     __tablename__ = "payments"
-
+    __table_args__ = (
+    UniqueConstraint(
+        "merchant_id",
+        "idempotency_key",
+        name="uq_payment_merchant_idempotency",
+    ),
+)
     id = Column(String, primary_key=True, index=True)
 
     merchant_id = Column(

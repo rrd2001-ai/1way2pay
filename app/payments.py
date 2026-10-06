@@ -9,6 +9,7 @@ def create_payment(
     currency: str,
     order_id: str,
     merchant: Merchant,
+    idempotency_key: str,
 ) -> Payment:
 
     payment_id = f"pay_{uuid.uuid4().hex[:12]}"
@@ -21,6 +22,7 @@ def create_payment(
         order_id=order_id,
         status="created",
         provider="mock_bank",
+        idempotency_key=idempotency_key,
     )
 
     db.add(payment)
