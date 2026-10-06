@@ -16,6 +16,9 @@ class Payment(Base):
         nullable=True,
         index=True,
     )
+
+    idempotency_key = Column(String, nullable=True, index=True)
+
     order_id = Column(String, nullable=False, index=True)
 
     amount = Column(Integer, nullable=False)

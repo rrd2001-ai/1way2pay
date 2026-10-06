@@ -1,8 +1,6 @@
 import uuid
-
 from sqlalchemy.orm import Session
-
-from .models import Payment
+from .models import Merchant, Payment
 
 
 def create_payment(
@@ -10,12 +8,14 @@ def create_payment(
     amount: int,
     currency: str,
     order_id: str,
+    merchant: Merchant,
 ) -> Payment:
 
     payment_id = f"pay_{uuid.uuid4().hex[:12]}"
 
     payment = Payment(
         id=payment_id,
+        merchant_id=merchant.id,
         amount=amount,
         currency=currency,
         order_id=order_id,

@@ -57,11 +57,12 @@ def create_payment_endpoint(
     merchant: Merchant = Depends(get_current_merchant),
 ):
     payment = create_payment(
-        db=db,
-        amount=payment_data.amount,
-        currency=payment_data.currency,
-        order_id=payment_data.order_id,
-    )
+    db=db,
+    amount=payment_data.amount,
+    currency=payment_data.currency,
+    order_id=payment_data.order_id,
+    merchant=merchant,
+)
 
     return {
         "id": payment.id,
@@ -77,12 +78,16 @@ def create_payment_endpoint(
 def get_payment(
     payment_id: str,
     db: Session = Depends(get_db),
+    merchant: Merchant = Depends(get_current_merchant),
 ):
     payment = (
-        db.query(Payment)
-        .filter(Payment.id == payment_id)
-        .first()
+    db.query(Payment)
+    .filter(
+        Payment.id == payment_id,
+        Payment.merchant_id == merchant.id,
     )
+    .first()
+)
 
     if not payment:
         raise HTTPException(
