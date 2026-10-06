@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>1Way2Pay Checkout</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+                Roboto, Helvetica, Arial, sans-serif;
+            background: #f5f7fb;
+            color: #111827;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 440px;
+            margin: 60px auto;
+            padding: 20px;
+        }
+
+        .logo {
+            text-align: center;
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 24px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 28px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+        }
+
+        .merchant {
+            text-align: center;
+            color: #6b7280;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .amount {
+            text-align: center;
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 28px;
+        }
+
+        .label {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .bank {
+            width: 100%;
+            padding: 15px;
+            margin-bottom: 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 10px;
+            background: white;
+            cursor: pointer;
+            text-align: left;
+            font-size: 15px;
+        }
+
+        .bank:hover {
+            border-color: #111827;
+        }
+
+        .bank.selected {
+            border: 2px solid #111827;
+        }
+
+        .pay-button {
+            width: 100%;
+            margin-top: 20px;
+            padding: 16px;
+            border: none;
+            border-radius: 10px;
+            background: #111827;
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .pay-button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .secure {
+            text-align: center;
+            margin-top: 18px;
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        .error {
+            color: #dc2626;
+            text-align: center;
+            margin-top: 15px;
+        }
+
+        .success {
+            text-align: center;
+        }
+
+        .success-icon {
+            font-size: 50px;
+            margin-bottom: 15px;
+        }
+
+        .success h2 {
+            margin-bottom: 8px;
+        }
+
+        .success p {
+            color: #6b7280;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <div class="logo">
+        1Way2Pay
+    </div>
+
+    <div class="card" id="checkout-card">
+
+        <div class="merchant">
+            Secure payment
+        </div>
+
+        <div class="amount" id="amount">
+            Loading...
+        </div>
+
+        <div class="label">
+            Select your bank
+        </div>
+
+        <button class="bank" onclick="selectBank(this, 'HDFC Bank')">
+            HDFC Bank
+        </button>
+
+        <button class="bank" onclick="selectBank(this, 'ICICI Bank')">
+            ICICI Bank
+        </button>
+
+        <button class="bank" onclick="selectBank(this, 'Axis Bank')">
+            Axis Bank
+        </button>
+
+        <button class="bank" onclick="selectBank(this, 'SBI')">
+            State Bank of India
+        </button>
+
+        <button
+            class="pay-button"
+            id="pay-button"
+            onclick="continueToBank()"
+            disabled
+        >
+            Continue to Bank
+        </button>
+
+        <div class="secure">
+            🔒 Secure bank authentication
+        </div>
+
+        <div class="error" id="error"></div>
+
+    </div>
+
+</div>
+
+<script>
+
+    const paymentId = window.location.pathname.split("/").pop();
+
+    let selectedBank = null;
+
+    async function loadPayment() {
+
+        try {
+
+            const response = await fetch(
+                `/v1/payments/${paymentId}`
+            );
+
+            if (!response.ok) {
+                throw new Error("Payment not found");
+            }
+
+            const payment = await response.json();
+
+            const amount = payment.amount / 100;
+
+            document.getElementById("amount").innerText =
+                `₹${amount.toLocaleString("en-IN", {
+                    minimumFractionDigits: 2
+                })}`;
+
+        } catch (error) {
+
+            document.getElementById("amount").innerText =
+                "Payment unavailable";
+
+            document.getElementById("error").innerText =
+                error.message;
+        }
+    }
+
+    function selectBank(button, bankName) {
+
+        document.querySelectorAll(".bank").forEach(
+            bank => bank.classList.remove("selected")
+        );
+
+        button.classList.add("selected");
+
+        selectedBank = bankName;
+
+        document.getElementById("pay-button").disabled = false;
+    }
+
+    async function continueToBank() {
+
+        if (!selectedBank) {
+            return;
+        }
+
+        const button = document.getElementById("pay-button");
+
+        button.disabled = true;
+        button.innerText = "Connecting to " + selectedBank + "...";
+
+        setTimeout(() => {
+
+            showBankAuthentication();
+
+        }, 1000);
+    }
+
+    function showBankAuthentication() {
+
+        document.getElementById("checkout-card").innerHTML = `
+
+            <div class="merchant">
+                ${selectedBank}
+            </div>
+
+            <div class="amount">
+                Bank Authentication
+            </div>
+
+            <p style="text-align:center;color:#6b7280;">
+                This is a simulated bank authentication
+                for the 1Way2Pay MVP.
+            </p>
+
+            <button
+                class="pay-button"
+                onclick="authenticate()"
+            >
+                Authenticate & Pay
+            </button>
+
+            <div class="secure">
+                🔒 Authentication handled by your bank
+            </div>
+        `;
+    }
+
+    async function authenticate() {
+
+        const button = document.querySelector(".pay-button");
+
+        button.disabled = true;
+        button.innerText = "Processing payment...";
+
+        try {
+
+            const response = await fetch(
+                `/v1/payments/${paymentId}/simulate-success`,
+                {
+                    method: "POST"
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error("Payment failed");
+            }
+
+            const result = await response.json();
+
+            showSuccess(result);
+
+        } catch (error) {
+
+            document.getElementById("checkout-card").innerHTML = `
+
+                <div class="success">
+
+                    <div class="success-icon">
+                        ❌
+                    </div>
+
+                    <h2>
+                        Payment Failed
+                    </h2>
+
+                    <p>
+                        ${error.message}
+                    </p>
+
+                </div>
+            `;
+        }
+    }
+
+    function showSuccess(result) {
+
+        document.getElementById("checkout-card").innerHTML = `
+
+            <div class="success">
+
+                <div class="success-icon">
+                    ✓
+                </div>
+
+                <h2>
+                    Payment Successful
+                </h2>
+
+                <p>
+                    Your payment has been completed.
+                </p>
+
+                <p>
+                    Payment ID:
+                    <strong>${result.payment_id}</strong>
+                </p>
+
+                <p>
+                    Transaction ID:
+                    <strong>${result.provider_transaction_id}</strong>
+                </p>
+
+            </div>
+        `;
+    }
+
+    loadPayment();
+
+</script>
+
+</body>
+</html>
