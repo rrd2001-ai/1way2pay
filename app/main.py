@@ -1,7 +1,7 @@
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import RedirectResponse
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
-
 from .database import Base, engine, get_db
 from .models import Payment
 from .payments import create_payment, mark_payment_success
@@ -92,15 +92,13 @@ def checkout(
             detail="Payment not found",
         )
 
-    return {
-        "message": "1Way2Pay Checkout",
-        "payment_id": payment.id,
-        "amount": payment.amount,
-        "currency": payment.currency,
-        "status": payment.status,
-        "payment_method": "Pay by Bank",
-    }
+    if payment.status == "success":
+        raise HTTPException(
+            status_code=400,
+            detail="Payment already completed",
+        )
 
+    return FileResponse("static/checkout.html")
 
 @app.post("/v1/payments/{payment_id}/simulate-success")
 def simulate_success(
