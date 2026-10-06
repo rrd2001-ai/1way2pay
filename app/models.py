@@ -29,3 +29,15 @@ class Payment(Base):
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
     )
+
+class Merchant(Base):
+    __tablename__ = "merchants"
+
+    id = Column(String, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    api_key = Column(String, nullable=False, unique=True, index=True)
+
+    created_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+    )
