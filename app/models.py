@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, DateTime, Integer, String
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
 
 from .database import Base
 
@@ -9,6 +9,13 @@ class Payment(Base):
     __tablename__ = "payments"
 
     id = Column(String, primary_key=True, index=True)
+
+    merchant_id = Column(
+        String,
+        ForeignKey("merchants.id"),
+        nullable=True,
+        index=True,
+    )
     order_id = Column(String, nullable=False, index=True)
 
     amount = Column(Integer, nullable=False)
