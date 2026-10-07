@@ -1,7 +1,10 @@
 from datetime import datetime, timezone
+import hashlib
+import hmac
+import json
 import uuid
-import requests
 
+import requests
 from sqlalchemy.orm import Session
 
 from .models import Merchant, Payment, WebhookEvent
@@ -28,6 +31,26 @@ def create_webhook_event(
     return event
 
 
+def generate_signature(
+    payload: dict,
+    secret: str,
+) -> str:
+
+    payload_bytes = json.dumps(
+        payload,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+
+    signature = hmac.new(
+        secret.encode("utf-8"),
+        payload_bytes,
+        hashlib.sha256,
+    ).hexdigest()
+
+    return f"sha256={signature}"
+
+
 def deliver_webhook(
     db: Session,
     event: WebhookEvent,
@@ -44,6 +67,12 @@ def deliver_webhook(
         db.refresh(event)
         return event
 
+    if not merchant.webhook_secret:
+        event.status = "failed"
+        db.commit()
+        db.refresh(event)
+        return event
+
     payload = {
         "id": event.id,
         "event": event.event_type,
@@ -54,12 +83,20 @@ def deliver_webhook(
         "status": payment.status,
     }
 
+    signature = generate_signature(
+        payload=payload,
+        secret=merchant.webhook_secret,
+    )
+
     event.attempts += 1
 
     try:
         response = requests.post(
             merchant.webhook_url,
             json=payload,
+            headers={
+                "X-1Way2Pay-Signature": signature,
+            },
             timeout=5,
         )
 

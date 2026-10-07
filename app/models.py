@@ -51,7 +51,8 @@ class Merchant(Base):
     name = Column(String, nullable=False)
     api_key = Column(String, nullable=False, unique=True, index=True)
     webhook_url = Column(String, nullable=True)
-
+    webhook_secret = Column(String, nullable=True)
+    
     created_at = Column(
         DateTime,
         default=lambda: datetime.now(timezone.utc),
