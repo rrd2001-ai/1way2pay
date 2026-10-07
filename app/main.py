@@ -3,7 +3,13 @@ from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from .database import Base, engine, get_db
 from .models import Merchant, Payment, WebhookEvent
-from .payments import create_payment, mark_payment_success
+from .payments import (
+    create_payment,
+    mark_payment_processing,
+    mark_payment_success,
+    mark_payment_failed,
+    mark_payment_expired,
+)
 from .webhooks import create_webhook_event, deliver_webhook
 from .schemas import PaymentCreate
 
@@ -188,7 +194,15 @@ def simulate_success(
             "status": payment.status,
         }
 
-    payment = mark_payment_success(db, payment)
+    payment = mark_payment_processing(
+        db,
+        payment,
+    )
+
+    payment = mark_payment_success(
+        db,
+        payment,
+    )
 
     event = create_webhook_event(
     db=db,
