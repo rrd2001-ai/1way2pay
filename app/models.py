@@ -50,8 +50,52 @@ class Merchant(Base):
     id = Column(String, primary_key=True, index=True)
     name = Column(String, nullable=False)
     api_key = Column(String, nullable=False, unique=True, index=True)
+    webhook_url = Column(String, nullable=True)
 
     created_at = Column(
         DateTime,
         default=lambda: datetime.now(timezone.utc),
+    )
+
+class WebhookEvent(Base):
+    __tablename__ = "webhook_events"
+
+    id = Column(String, primary_key=True, index=True)
+
+    merchant_id = Column(
+        String,
+        ForeignKey("merchants.id"),
+        nullable=False,
+        index=True,
+    )
+
+    payment_id = Column(
+        String,
+        ForeignKey("payments.id"),
+        nullable=False,
+        index=True,
+    )
+
+    event_type = Column(String, nullable=False)
+
+    status = Column(
+        String,
+        nullable=False,
+        default="pending",
+    )
+
+    attempts = Column(
+        Integer,
+        nullable=False,
+        default=0,
+    )
+
+    created_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+    delivered_at = Column(
+        DateTime,
+        nullable=True,
     )

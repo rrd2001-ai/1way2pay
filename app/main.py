@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from .database import Base, engine, get_db
 from .models import Merchant, Payment
 from .payments import create_payment, mark_payment_success
+from .webhooks import create_webhook_event, deliver_webhook
 from .schemas import PaymentCreate
 
 from .auth import get_current_merchant
@@ -189,9 +190,25 @@ def simulate_success(
 
     payment = mark_payment_success(db, payment)
 
+    event = create_webhook_event(
+    db=db,
+    payment=payment,
+)
+
+    event = deliver_webhook(
+        db=db,
+        event=event,
+        merchant=merchant,
+        payment=payment,
+    )
+
     return {
         "message": "Payment successful",
         "payment_id": payment.id,
         "status": payment.status,
         "provider_transaction_id": payment.provider_transaction_id,
+        "webhook_event_id": event.id,
+        "webhook_event_type": event.event_type,
+        "webhook_status": event.status,
+        "webhook_attempts": event.attempts,
     }
