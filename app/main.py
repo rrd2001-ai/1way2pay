@@ -2,7 +2,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from .database import Base, engine, get_db
-from .models import Merchant, Payment
+from .models import Merchant, Payment, WebhookEvent
 from .payments import create_payment, mark_payment_success
 from .webhooks import create_webhook_event, deliver_webhook
 from .schemas import PaymentCreate
@@ -211,4 +211,63 @@ def simulate_success(
         "webhook_event_type": event.event_type,
         "webhook_status": event.status,
         "webhook_attempts": event.attempts,
+    }
+
+@app.post("/v1/webhooks/{event_id}/retry")
+def retry_webhook(
+    event_id: str,
+    db: Session = Depends(get_db),
+    merchant: Merchant = Depends(get_current_merchant),
+):
+    event = (
+        db.query(WebhookEvent)
+        .filter(
+            WebhookEvent.id == event_id,
+            WebhookEvent.merchant_id == merchant.id,
+        )
+        .first()
+    )
+
+    if not event:
+        raise HTTPException(
+            status_code=404,
+            detail="Webhook event not found",
+        )
+
+    if event.status == "delivered":
+        return {
+            "message": "Webhook already delivered",
+            "event_id": event.id,
+            "status": event.status,
+            "attempts": event.attempts,
+        }
+
+    payment = (
+        db.query(Payment)
+        .filter(
+            Payment.id == event.payment_id,
+            Payment.merchant_id == merchant.id,
+        )
+        .first()
+    )
+
+    if not payment:
+        raise HTTPException(
+            status_code=404,
+            detail="Payment not found",
+        )
+
+    event = deliver_webhook(
+        db=db,
+        event=event,
+        merchant=merchant,
+        payment=payment,
+    )
+
+    return {
+        "message": "Webhook retry attempted",
+        "event_id": event.id,
+        "status": event.status,
+        "attempts": event.attempts,
+        "delivered_at": event.delivered_at,
     }

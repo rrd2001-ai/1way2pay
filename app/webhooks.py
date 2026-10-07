@@ -35,7 +35,13 @@ def deliver_webhook(
     payment: Payment,
 ) -> WebhookEvent:
 
+    if event.status == "delivered":
+        return event
+
     if not merchant.webhook_url:
+        event.status = "failed"
+        db.commit()
+        db.refresh(event)
         return event
 
     payload = {
